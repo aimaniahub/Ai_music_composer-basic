@@ -15,6 +15,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')  # Suppress most of the logs
 
+port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable
+app.run(host='0.0.0.0', port=port)
+
 
 # Load your music model and soundfont
 model = load_model('backend/trained_music_model.h5')
