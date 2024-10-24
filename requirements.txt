@@ -4,3 +4,4 @@ keras
 pretty_midi
 tensorflow
 midi2audio
+pydub
