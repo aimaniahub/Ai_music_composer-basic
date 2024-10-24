@@ -9,11 +9,6 @@ import random
 from keras.losses import MeanSquaredError  
 
 app = Flask(__name__)
-@app.route('/')
-def index():
-    available_genres = list(instruments.keys())
-    return render_template('index.html', genres=available_genres)
-
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
