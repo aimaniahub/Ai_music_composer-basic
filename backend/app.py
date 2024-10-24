@@ -9,6 +9,11 @@ import random
 from keras.losses import MeanSquaredError  
 
 app = Flask(__name__)
+@app.route('/')
+def index():
+    available_genres = list(instruments.keys())
+    return render_template('index.html', genres=available_genres)
+
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
@@ -138,10 +143,6 @@ def wav_to_mp3(wav_filepath):
     sound.export(mp3_filepath, format='mp3')
     return mp3_filepath
 
-@app.route('/')
-def index():
-    available_genres = list(instruments.keys())
-    return render_template('index.html', genres=available_genres)
 
 @app.route('/generate_music', methods=['POST'])
 def generate_music_endpoint():
