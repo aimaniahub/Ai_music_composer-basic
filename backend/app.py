@@ -20,8 +20,9 @@ model = load_model('backend/trained_music_model.h5')
 
 soundfont_path = 'C:\\ProgramData\\soundfonts\\FluidR3_GM.sf2'
 
-output_directory = '/new_files'
+output_directory = "/tmp/new_files"
 os.makedirs(output_directory, exist_ok=True)
+
 file_counter = 0
 
 # Updated instruments and their characteristics for each genre
