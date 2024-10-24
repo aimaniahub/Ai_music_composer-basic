@@ -9,6 +9,12 @@ import random
 
 app = Flask(__name__)
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
+import tensorflow as tf
+tf.get_logger().setLevel('ERROR')  # Suppress most of the logs
+
+
 # Load your music model and soundfont
 model = load_model('backend/trained_music_model.h5')
 
