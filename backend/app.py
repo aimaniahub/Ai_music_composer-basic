@@ -10,7 +10,8 @@ import random
 app = Flask(__name__)
 
 # Load your music model and soundfont
-model = load_model('trained_music_model.h5')
+model = load_model('backend/trained_music_model.h5')
+
 soundfont_path = 'C:\\ProgramData\\soundfonts\\FluidR3_GM.sf2'
 
 output_directory = '/new_files'
