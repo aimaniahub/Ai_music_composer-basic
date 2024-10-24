@@ -10,19 +10,9 @@ from keras.losses import MeanSquaredError
 
 app = Flask(__name__)
 
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
-import tensorflow as tf
-tf.get_logger().setLevel('ERROR')  # Suppress most of the logs
-
-port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable
-app.run(host='0.0.0.0', port=port)
-
-
 # Load your music model and soundfont
 model = load_model('backend/trained_music_model.h5')
-model.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])  # For regression
-# model.compile(optimizer='adam', loss=BinaryCrossentropy(), metrics=['accuracy'])  # For binary classification
+model.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])
 
 soundfont_path = 'C:\\ProgramData\\soundfonts\\FluidR3_GM.sf2'
 
@@ -33,35 +23,28 @@ file_counter = 0
 
 # Updated instruments and their characteristics for each genre
 instruments = {
-    'cinematic': [
-        {'name': 'strings', 'program': 48, 'note_range': (48, 72)},
-        {'name': 'brass', 'program': 57, 'note_range': (53, 77)},
-        {'name': 'piano', 'program': 1, 'note_range': (36, 84)},
-        {'name': 'choir', 'program': 52, 'note_range': (60, 72)},
-        {'name': 'timpani', 'program': 47, 'note_range': (36, 48)},
-    ],
-    'melody': [
-        {'name': 'piano', 'program': 1, 'note_range': (60, 84)},
-        {'name': 'strings', 'program': 48, 'note_range': (55, 79)},
-        {'name': 'flute', 'program': 73, 'note_range': (72, 96)},
-        {'name': 'harp', 'program': 46, 'note_range': (48, 83)},
-        {'name': 'celesta', 'program': 8, 'note_range': (60, 96)},
-    ],
-    'hiphop': [
-        {'name': 'bass', 'program': 36, 'note_range': (36, 48)},
-        {'name': 'synth_lead', 'program': 81, 'note_range': (48, 72)},
-        {'name': 'electric_piano', 'program': 4, 'note_range': (60, 84)},
-        {'name': 'percussion', 'program': 118, 'note_range': (35, 50)},
-        {'name': 'scratch', 'program': 119, 'note_range': (30, 40)},
-    ],
-    'classical': [
-        {'name': 'piano', 'program': 1, 'note_range': (40, 88)},
-        {'name': 'violin', 'program': 41, 'note_range': (55, 84)},
-        {'name': 'cello', 'program': 43, 'note_range': (36, 60)},
-        {'name': 'flute', 'program': 73, 'note_range': (60, 96)},
-        {'name': 'clarinet', 'program': 71, 'note_range': (48, 80)},
-    ]
+    'cinematic': [{'name': 'strings', 'program': 48, 'note_range': (48, 72)},
+                  {'name': 'brass', 'program': 57, 'note_range': (53, 77)},
+                  {'name': 'piano', 'program': 1, 'note_range': (36, 84)},
+                  {'name': 'choir', 'program': 52, 'note_range': (60, 72)},
+                  {'name': 'timpani', 'program': 47, 'note_range': (36, 48)}],
+    'melody': [{'name': 'piano', 'program': 1, 'note_range': (60, 84)},
+               {'name': 'strings', 'program': 48, 'note_range': (55, 79)},
+               {'name': 'flute', 'program': 73, 'note_range': (72, 96)},
+               {'name': 'harp', 'program': 46, 'note_range': (48, 83)},
+               {'name': 'celesta', 'program': 8, 'note_range': (60, 96)}],
+    'hiphop': [{'name': 'bass', 'program': 36, 'note_range': (36, 48)},
+               {'name': 'synth_lead', 'program': 81, 'note_range': (48, 72)},
+               {'name': 'electric_piano', 'program': 4, 'note_range': (60, 84)},
+               {'name': 'percussion', 'program': 118, 'note_range': (35, 50)},
+               {'name': 'scratch', 'program': 119, 'note_range': (30, 40)}],
+    'classical': [{'name': 'piano', 'program': 1, 'note_range': (40, 88)},
+                  {'name': 'violin', 'program': 41, 'note_range': (55, 84)},
+                  {'name': 'cello', 'program': 43, 'note_range': (36, 60)},
+                  {'name': 'flute', 'program': 73, 'note_range': (60, 96)},
+                  {'name': 'clarinet', 'program': 71, 'note_range': (48, 80)}]
 }
+
 @app.route('/')
 def index():
     available_genres = list(instruments.keys())
@@ -75,6 +58,7 @@ tempo_mapping = {
     'classical': 90
 }
 
+# Music generation functions...
 def generate_rhythm_pattern(genre, length=16):
     base_pattern = [1, 0, 1, 0] * 4  # Example base pattern
     if genre == 'hiphop':
@@ -141,7 +125,7 @@ def wav_to_mp3(wav_filepath):
     sound = AudioSegment.from_wav(wav_filepath)
     sound.export(mp3_filepath, format='mp3')
     return mp3_filepath
-
+ 
 
 @app.route('/generate_music', methods=['POST'])
 def generate_music_endpoint():
@@ -165,10 +149,11 @@ def generate_music_endpoint():
         print(f"Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-
 @app.route('/download/<filename>')
 def download_file(filename):
     return send_from_directory(output_directory, filename)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable
+    app.run(host='0.0.0.0', port=port, debug=True)  # Ensure debug is on for development
+
