@@ -67,6 +67,10 @@ instruments = {
         {'name': 'clarinet', 'program': 71, 'note_range': (48, 80)},
     ]
 }
+@app.route('/')
+def index():
+    available_genres = list(instruments.keys())
+    return render_template('index.html', genres=available_genres)
 
 # Tempo mapping for genres
 tempo_mapping = {
