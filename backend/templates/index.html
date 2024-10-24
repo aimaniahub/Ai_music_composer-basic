@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Music Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .controls {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .genre-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .genre-button {
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .genre-button.active {
+            border-color: var(--primary-color);
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .genre-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .generate-button {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .generate-button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .generate-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .player {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .player-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .player-button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .player-button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-message {
+            text-align: center;
+            margin-top: 1rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .visualization {
+            width: 100%;
+            height: 100px;
+            background-color: var(--background-color);
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .visualization-bars {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            padding: 0 1rem;
+        }
+
+        .bar {
+            width: 4px;
+            background-color: var(--primary-color);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>AI Music Generator</h1>
+            <p>Create unique musical compositions with artificial intelligence</p>
+        </header>
+
+        <main class="main-content">
+            <section class="controls">
+                <h2>Choose Your Genre</h2>
+                <div class="genre-grid" id="genreGrid"></div>
+                <button id="generateButton" class="generate-button">Generate Music</button>
+                <div class="loading-spinner" id="loadingSpinner"></div>
+                <div class="status-message" id="statusMessage"></div>
+            </section>
+
+            <section class="player">
+                <h2>Music Player</h2>
+                <div class="visualization">
+                    <div class="visualization-bars" id="visualizationBars"></div>
+                </div>
+                <div class="player-controls">
+                    <button id="playButton" class="player-button" disabled>Play</button>
+                    <button id="stopButton" class="player-button" disabled>Stop</button>
+                    <button id="downloadButton" class="player-button" disabled>Download</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let currentSound = null;
+        let currentGenre = null;
+        let isPlaying = false;
+        let visualizationInterval = null;
+        const bars = 30;
+
+        // Initialize visualization bars
+        const visualizationBars = document.getElementById('visualizationBars');
+        for (let i = 0; i < bars; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.style.height = '2px';
+            visualizationBars.appendChild(bar);
+        }
+
+        // Initialize genre buttons
+        const genres = ['cinematic', 'melody', 'hiphop', 'classical'];
+        const genreGrid = document.getElementById('genreGrid');
+        
+        genres.forEach(genre => {
+            const button = document.createElement('button');
+            button.className = 'genre-button';
+            button.textContent = genre.charAt(0).toUpperCase() + genre.slice(1);
+            button.addEventListener('click', () => selectGenre(genre));
+            genreGrid.appendChild(button);
+        });
+
+        function selectGenre(genre) {
+            currentGenre = genre;
+            document.querySelectorAll('.genre-button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase() === genre) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('generateButton').disabled = false;
+        }
+
+        function updateVisualization() {
+            if (isPlaying) {
+                document.querySelectorAll('.bar').forEach(bar => {
+                    const height = Math.random() * 98 + 2;
+                    bar.style.height = `${height}px`;
+                });
+            } else {
+                document.querySelectorAll('.bar').forEach(bar => {
+                    bar.style.height = '2px';
+                });
+            }
+        }
+
+        document.getElementById('generateButton').addEventListener('click', async () => {
+            if (!currentGenre) return;
+
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const statusMessage = document.getElementById('statusMessage');
+            const generateButton = document.getElementById('generateButton');
+
+            try {
+                loadingSpinner.style.display = 'block';
+                generateButton.disabled = true;
+                statusMessage.textContent = 'Generating music...';
+
+                const response = await axios.post('/generate_music', {
+                    genre: currentGenre
+                });
+
+                if (response.data.mp3_filename) {
+                    if (currentSound) {
+                        currentSound.unload();
+                    }
+
+                    statusMessage.textContent = 'Loading audio...';
+                    currentSound = new Howl({
+                        src: [`/download/${response.data.mp3_filename}`],
+                        format: ['mp3'],
+                        onload: () => {
+                            document.getElementById('playButton').disabled = false;
+                            document.getElementById('stopButton').disabled = false;
+                            document.getElementById('downloadButton').disabled = false;
+                            statusMessage.textContent = 'Ready to play!';
+                        },
+                        onend: () => {
+                            isPlaying = false;
+                            document.getElementById('playButton').textContent = 'Play';
+                            clearInterval(visualizationInterval);
+                            updateVisualization();
+                        }
+                    });
+                }
+            } catch (error) {
+                statusMessage.textContent = 'Error generating music. Please try again.';
+                console.error('Error:', error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+                generateButton.disabled = false;
+            }
+        });
+
+        document.getElementById('playButton').addEventListener('click', () => {
+            if (!currentSound) return;
+
+            if (isPlaying) {
+                currentSound.pause();
+                isPlaying = false;
+                document.getElementById('playButton').textContent = 'Play';
+                clearInterval(visualizationInterval);
+                updateVisualization();
+            } else {
+                currentSound.play();
+                isPlaying = true;
+                document.getElementById('playButton').textContent = 'Pause';
+                visualizationInterval = setInterval(updateVisualization, 100);
+            }
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            if (!currentSound) return;
+            currentSound.stop();
+            isPlaying = false;
+            document.getElementById('playButton').textContent = 'Play';
+            clearInterval(visualizationInterval);
+            updateVisualization();
+        });
+
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            if (!currentSound) return;
+            const link = document.createElement('a');
+            link.href = currentSound._src;
+            link.download = `generated_music_${currentGenre}.mp3`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
