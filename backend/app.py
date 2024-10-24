@@ -6,6 +6,7 @@ from midi2audio import FluidSynth
 from pydub import AudioSegment
 import os
 import random
+from keras.losses import MeanSquaredError  
 
 app = Flask(__name__)
 
@@ -17,6 +18,8 @@ tf.get_logger().setLevel('ERROR')  # Suppress most of the logs
 
 # Load your music model and soundfont
 model = load_model('backend/trained_music_model.h5')
+model.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])  # For regression
+# model.compile(optimizer='adam', loss=BinaryCrossentropy(), metrics=['accuracy'])  # For binary classification
 
 soundfont_path = 'C:\\ProgramData\\soundfonts\\FluidR3_GM.sf2'
 
