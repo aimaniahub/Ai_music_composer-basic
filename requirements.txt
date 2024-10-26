@@ -5,3 +5,5 @@ pretty_midi
 tensorflow
 midi2audio
 pydub
+requests
+gunicorn
