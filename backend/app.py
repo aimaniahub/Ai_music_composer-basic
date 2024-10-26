@@ -6,15 +6,17 @@ from midi2audio import FluidSynth
 from pydub import AudioSegment
 import os
 import random
-from keras.losses import MeanSquaredError  
+from keras.losses import MeanSquaredError
+import logging
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 # Load your music model
 model = load_model('backend/trained_music_model.h5')
 model.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])
 
-# Update with your S3 object URL for the soundfont
+# AWS S3 soundfont URL
 soundfont_url = 'https://my-app-music-09242024.s3.eu-north-1.amazonaws.com/music-soundfont-2024/soundfonts/FluidR3_GM.sf2'
 
 output_directory = "/tmp/new_files"
@@ -22,7 +24,7 @@ os.makedirs(output_directory, exist_ok=True)
 
 file_counter = 0
 
-# Updated instruments and their characteristics for each genre
+# Instrument configurations
 instruments = {
     'cinematic': [{'name': 'strings', 'program': 48, 'note_range': (48, 72)},
                   {'name': 'brass', 'program': 57, 'note_range': (53, 77)},
@@ -46,11 +48,6 @@ instruments = {
                   {'name': 'clarinet', 'program': 71, 'note_range': (48, 80)}]
 }
 
-@app.route('/')
-def index():
-    available_genres = list(instruments.keys())
-    return render_template('index.html', genres=available_genres)
-
 # Tempo mapping for genres
 tempo_mapping = {
     'cinematic': 120,
@@ -59,9 +56,8 @@ tempo_mapping = {
     'classical': 90
 }
 
-# Music generation functions...
 def generate_rhythm_pattern(genre, length=16):
-    base_pattern = [1, 0, 1, 0] * 4  # Example base pattern
+    base_pattern = [1, 0, 1, 0] * 4
     if genre == 'hiphop':
         return [1 if random.random() < 0.8 and base_pattern[i] else 0 for i in range(length)]
     else:
@@ -93,10 +89,12 @@ def generate_music(num_bars=8, notes_per_bar=16, genre='cinematic'):
 def save_to_midi(generated_notes, tempo, genre):
     global file_counter
     midi_data = pretty_midi.PrettyMIDI(initial_tempo=tempo)
+    
     for instr in instruments[genre]:
         instrument = pretty_midi.Instrument(program=instr['program'])
         start_time = 0
         note_duration = 60 / tempo
+        
         for note in generated_notes[instr['name']]:
             if note != -1:
                 velocity = np.random.randint(70, 100)
@@ -113,45 +111,65 @@ def save_to_midi(generated_notes, tempo, genre):
     return midi_filepath
 
 def midi_to_wav(midi_filepath):
-    wav_filename = midi_filepath.replace('.midi', '.wav')
+    wav_filename = os.path.basename(midi_filepath).replace('.midi', '.wav')
     wav_filepath = os.path.join(output_directory, wav_filename)
-    fs = FluidSynth(soundfont_url)  # Use the S3 URL here
+    
+    # Use FluidSynth directly with the AWS URL
+    fs = FluidSynth(sound_font=soundfont_url)
     fs.midi_to_audio(midi_filepath, wav_filepath)
     return wav_filepath
 
 def wav_to_mp3(wav_filepath):
-    mp3_filename = wav_filepath.replace('.wav', '.mp3')
+    mp3_filename = os.path.basename(wav_filepath).replace('.wav', '.mp3')
     mp3_filepath = os.path.join(output_directory, mp3_filename)
     sound = AudioSegment.from_wav(wav_filepath)
     sound.export(mp3_filepath, format='mp3')
     return mp3_filepath
- 
+
+@app.route('/')
+def index():
+    available_genres = list(instruments.keys())
+    return render_template('index.html', genres=available_genres)
+
 @app.route('/generate_music', methods=['POST'])
 def generate_music_endpoint():
     try:
         data = request.get_json()
         genre = data.get('genre', 'cinematic')
-
-        # Set default values for num_bars and notes_per_bar
-        num_bars = 8  # Default number of bars
-        notes_per_bar = 16  # Default number of notes per bar
-
-        generated_notes, tempo = generate_music(num_bars, notes_per_bar, genre)
+        
+        app.logger.info(f"Generating music for genre: {genre}")
+        
+        # Generate the music
+        generated_notes, tempo = generate_music(num_bars=8, notes_per_bar=16, genre=genre)
+        
+        # Save to MIDI
         midi_filepath = save_to_midi(generated_notes, tempo, genre)
+        app.logger.info(f"MIDI file saved: {midi_filepath}")
+        
+        # Convert to WAV using AWS soundfont
         wav_filepath = midi_to_wav(midi_filepath)
+        app.logger.info(f"WAV file created: {wav_filepath}")
+        
+        # Convert to MP3
         mp3_filepath = wav_to_mp3(wav_filepath)
+        app.logger.info(f"MP3 file created: {mp3_filepath}")
+
+        # Clean up intermediate files
+        os.remove(midi_filepath)
+        os.remove(wav_filepath)
 
         mp3_filename = os.path.basename(mp3_filepath)
         return jsonify({'mp3_filename': mp3_filename})
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        app.logger.error(f"Error generating music: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/download/<filename>')
 def download_file(filename):
-    return send_from_directory(output_directory, filename)
+    return send_from_directory(output_directory, filename, as_attachment=True)
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable
-    app.run(host='0.0.0.0', port=port, debug=True)  # Ensure debug is on for development
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV") == "development"
+    app.run(host='0.0.0.0', port=port, debug=debug)
