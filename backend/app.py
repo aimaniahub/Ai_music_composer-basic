@@ -10,11 +10,12 @@ from keras.losses import MeanSquaredError
 
 app = Flask(__name__)
 
-# Load your music model and soundfont
+# Load your music model
 model = load_model('backend/trained_music_model.h5')
 model.compile(optimizer='adam', loss=MeanSquaredError(), metrics=['accuracy'])
 
-soundfont_path = 'C:\\ProgramData\\soundfonts\\FluidR3_GM.sf2'
+# Update with your S3 object URL for the soundfont
+soundfont_url = 'https://my-app-music-09242024.s3.eu-north-1.amazonaws.com/music-soundfont-2024/soundfonts/FluidR3_GM.sf2'
 
 output_directory = "/tmp/new_files"
 os.makedirs(output_directory, exist_ok=True)
@@ -89,7 +90,6 @@ def generate_music(num_bars=8, notes_per_bar=16, genre='cinematic'):
 
     return generated_notes, current_tempo
 
-
 def save_to_midi(generated_notes, tempo, genre):
     global file_counter
     midi_data = pretty_midi.PrettyMIDI(initial_tempo=tempo)
@@ -115,7 +115,7 @@ def save_to_midi(generated_notes, tempo, genre):
 def midi_to_wav(midi_filepath):
     wav_filename = midi_filepath.replace('.midi', '.wav')
     wav_filepath = os.path.join(output_directory, wav_filename)
-    fs = FluidSynth(soundfont_path)
+    fs = FluidSynth(soundfont_url)  # Use the S3 URL here
     fs.midi_to_audio(midi_filepath, wav_filepath)
     return wav_filepath
 
@@ -126,7 +126,6 @@ def wav_to_mp3(wav_filepath):
     sound.export(mp3_filepath, format='mp3')
     return mp3_filepath
  
-
 @app.route('/generate_music', methods=['POST'])
 def generate_music_endpoint():
     try:
@@ -156,4 +155,3 @@ def download_file(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))  # Use the PORT environment variable
     app.run(host='0.0.0.0', port=port, debug=True)  # Ensure debug is on for development
-
