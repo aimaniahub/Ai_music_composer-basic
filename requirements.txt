@@ -7,3 +7,4 @@ midi2audio
 pydub
 requests
 gunicorn
+fluidsynth
